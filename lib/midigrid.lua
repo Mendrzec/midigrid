@@ -24,13 +24,7 @@ function midigrid:all(brightness)
     local note = nil
     if midigrid.device then
         midigrid.led_buf = {}
-        for row = 1, midigrid.rows do
-            for col = 1, midigrid.cols do
-                note = grid_notes[row][col]
-                -- the result of the fn call becomes the arg to `_brightness_to_buffer`
-                _brightness_to_buffer(note, vel, config:all_led_sysex(vel))
-            end
-        end
+        _brightness_to_buffer(note, vel, config:all_led_sysex(vel))
     end
 end
 

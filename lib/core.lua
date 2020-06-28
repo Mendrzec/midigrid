@@ -30,7 +30,8 @@ function midigrid.init()
         launchpadmk2 = 'launchpad mk2',
         launchpadpro = 'launchpad pro 2',
         launchpad = 'launchpad',
-        launchpadmini = 'launchpad mini'
+        launchpadmini = 'launchpad mini',
+        launchpadx = 'launchpad x 2'
     }
     local config_name = 'none'
     config = nil
