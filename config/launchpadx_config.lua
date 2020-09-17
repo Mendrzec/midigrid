@@ -23,26 +23,26 @@ local launchpad = {
        NOTE! Individual LED brightnesses only range from 0x0-0x3f (i.e. 0-63); 1/4 the
           resolution of what we're used to (i.e. 0x0-0xff or 0-255)
   ]]
-  brightness_handler = function(val)
-      local less_angry_rainbow = {
-          {0x00,0x00,0x00},
-          {0x00,0x09,0x19},
-          {0x05,0x16,0x2f},
-          {0x14,0x18,0x34},
-          {0x08,0x07,0x21},
-          {0x12,0x07,0x21},
-          {0x19,0x04,0x22},
-          {0x29,0x0e,0x2b},
-          {0x1f,0x00,0x1a},
-          {0x30,0x04,0x20},
-          {0x34,0x08,0x19},
-          {0x3f,0x15,0x1b},
-          {0x3f,0x19,0x14},
-          {0x3f,0x20,0x0e},
-          {0x3c,0x26,0x0b},
-          {0x37,0x2d,0x0b}
-      }
-      return less_angry_rainbow[val + 1]
+  less_angry_rainbow = {
+    {0x00,0x00,0x00},
+    {0x00,0x09,0x19},
+    {0x05,0x16,0x2f},
+    {0x14,0x18,0x34},
+    {0x08,0x07,0x21},
+    {0x12,0x07,0x21},
+    {0x19,0x04,0x22},
+    {0x29,0x0e,0x2b},
+    {0x1f,0x00,0x1a},
+    {0x30,0x04,0x20},
+    {0x34,0x08,0x19},
+    {0x3f,0x15,0x1b},
+    {0x3f,0x19,0x14},
+    {0x3f,0x20,0x0e},
+    {0x3c,0x26,0x0b},
+    {0x37,0x2d,0x0b}
+  },
+  brightness_handler = function(self, val)
+      return self.less_angry_rainbow[val + 1]
   end,
 
   --[[ this is the column of keys on the sides of the grid, not necessary for strict
@@ -71,21 +71,11 @@ local launchpad = {
     cc_edge_buttons = true
   },
 
-
-  split_string = function(color)
-      local rgb = {}
-      -- '([^,]+)' regex for 'group match any number of characters which are not `,`'
-      for byte in string.gmatch(color, '([^,]+)') do
-          rgb[#rgb + 1] = byte
-      end
-      return rgb[1], rgb[2], rgb[3]
+  create_colourspec = function(self, led_index, color)
+      return {0x03, tonumber(led_index), color[1], color[2], color[3]}
   end,
 
-
-  led_sysex = function(self, led, color)
-      return self.do_sysex({0x03, tonumber(led), color[1], color[2], color[3]})
-  end,
-
+  -- ONLY FOR MIDIGRID 64
   all_led_sysex = function(self, color)
       local bytes = {}
       for k, v in pairs(self.grid_notes) do
@@ -100,13 +90,22 @@ local launchpad = {
       return self.do_sysex(bytes)
   end,
 
-  do_sysex = function(bytes)
-      local sysex = {0xf0, 0x00, 0x20, 0x29, 0x02, 0x0C, 0x03}
-      for k, v in pairs(bytes) do
-        table.insert(sysex, v)
-      end
-      table.insert(sysex, 0xf7)
-      return sysex
+  wrap_colourspec_into_sysex = function(self, colourspec)
+    local sysex = {0xf0, 0x00, 0x20, 0x29, 0x02, 0x0C, 0x03}
+    -- This appends colourspec bytes to sysex, so SYSEX is RESULT
+    -- for i=1, #colourspec do
+    --   sysex[#sysex + 1] = colourspec[i]
+    -- end
+    -- sysex[#sysex + 1] = 0xf7
+    -- return sysex
+
+    -- This prepends sysex to colourspec bytes, so BYTES is RESULT
+    for i = #sysex, 1, -1 do
+      table.insert(colourspec, 1, sysex[i])
+    end
+
+    table.insert(colourspec, 0xf7)
+    return colourspec
   end,
 
     -- For unknown reason(s), allows us to use Programmer mode; the other ports don't

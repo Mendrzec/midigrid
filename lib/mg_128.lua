@@ -20,6 +20,8 @@ local views = {{},{}}
 
 local curr_view = 1
 
+local print_debug = false
+
 --be sure to put this after midigrid.init()
 function midigrid.views_init()
     -- defined so that our table's indices correspond to the quad numbers we've decided on:
@@ -86,24 +88,26 @@ function _light_quad_button(which_quad)
       end
   end
 
-function _brightness_to_buffer(note, vel, result)
-    -- `result` is the table returned by whichever led fn we called as an arg to
-    --     *this* fn
+function _colourspec_to_buffer(note, color, colourspec)
     if caps["sysex"] and caps["rgb"] then
-        for _, bytes in ipairs(result) do
-            table.insert(midigrid.led_buf, bytes)
+        for i=1, #colourspec do
+            midigrid.led_buf[#midigrid.led_buf + 1] = colourspec[i]
         end
     else
-        table.insert(midigrid.led_buf, 0x90)
-        table.insert(midigrid.led_buf, note)
-        table.insert(midigrid.led_buf, vel)
+        -- NOT USED IN LaunchpadX
+        -- table.insert(midigrid.led_buf, 0x90)
+        -- table.insert(midigrid.led_buf, note)
+        -- table.insert(midigrid.led_buf, vel)
     end
 end
 
 
 -- led handling. *generally speaking*; first we clear the unchanged led buffer...
 function midigrid:all(brightness)
-  local vel = brightness_handler(brightness)
+  if print_debug then
+    print("midigrid:all called")
+  end
+  local color = config:brightness_handler(brightness)
   for x = 1, 16 do
     for y = 1, 8 do
       if grid_buf[x][y] ~= brightness then  -- this led needs to be set
@@ -111,7 +115,7 @@ function midigrid:all(brightness)
         local index = 16*y+x
         local note = views[curr_view][index]
         if note ~= nil then
-          _brightness_to_buffer(note, vel, config:led_sysex(note, vel))
+            _colourspec_to_buffer(note, color, config:create_colourspec(note, color))
         end
       end
     end
@@ -120,24 +124,33 @@ end
 
 
 function midigrid:led(x, y, brightness)
+  if print_debug then
+    print("midigrid:led called")
+  end
+  if type(grid_buf) ~= "table" or type(grid_buf[x]) ~= "table" then return end
   grid_buf[x][y] = brightness
   local index =16*y+x
   local note = views[curr_view][index]
   if note ~= nil then
-    local vel = brightness_handler(brightness)
-    _brightness_to_buffer(note, vel, config:led_sysex(note, vel))
+    local color = config:brightness_handler(brightness)
+    _colourspec_to_buffer(note, color, config:create_colourspec(note, color))
   else
-    print("not in view!")
+    -- print("not in view!")
   end
 end
 
 
 function midigrid:refresh()
+    if print_debug then
+        print("midigrid:refresh called")
+    end
     if midigrid.device then
-        if caps['lp_double_buffer'] then
-            _local_midi_dev:send(config:display_double_buffer_sysex())
-        end
-        _local_midi_dev:send(midigrid.led_buf)
+        -- NOT USED IN LaunchpadX
+        -- if caps['lp_double_buffer'] then
+        --     _local_midi_dev:send(config:display_double_buffer_sysex())
+        -- end
+
+        _local_midi_dev:send(config:wrap_colourspec_into_sysex(midigrid.led_buf))
         -- apparently, we need to refresh the quad button leds as well
         _light_quad_button(curr_view)
         -- ...and clear the buffer again.
@@ -148,6 +161,9 @@ function midigrid:refresh()
 end
 
 function midigrid:changeview(view)
+    if print_debug then
+        print("midigrid:changeview called")
+    end
     midigrid.led_buf = {}
     if view == 1 then
         for x = 1, 8 do
